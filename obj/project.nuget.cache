@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "dgSpecHash": "OkPjw20P2FT14WjqSwNIRMT+WpFFgu+pbM/7C5yGlgQVEKmTe2gqi9ojtm0eyZRU0MxKApfjdqk1LDt37Mx0Gw==",
+  "success": true,
+  "projectFilePath": "F:\\Projekte\\WhiskyWebScraper\\WhiskyWebScraper\\WhiskyWebScraper.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\maxdi\\.nuget\\packages\\htmlagilitypack\\1.11.46\\htmlagilitypack.1.11.46.nupkg.sha512"
+  ],
+  "logs": []
+}
