@@ -1,30 +1,26 @@
 ﻿using HtmlAgilityPack;
-using System.Net.Http;
-using System.Net.Http.Headers;
-using System.Threading.Tasks;
-using System.Net;
-using System.Text;
-using System.IO;
-using Microsoft.AspNetCore.Mvc;
+using WhiskyWebScraper.Helper;
 
 namespace WhiskyWebScraper
 {
     public class WebSraper
     {
-        private readonly string BaseUrl = "https://www.whisky.de/flaschen-db/flaschen-suche.html";
 
 
         // Worker Methods
 
         private async Task<string> CallUrl(string fullUrl)
         {
+
             HttpClient client = new HttpClient();
             var response = await client.GetStringAsync(fullUrl);
             return response;
         }
 
         // Scraper
-        public async Task Start() {
+        public async Task Start() {            
+            string BaseUrl = $"https://www.whisky.de/flaschen-db/flaschen-suche/whisky/fdb/Flaschen/search.html?type=1505224767&tx_datamintsflaschendb_pi4%5BsearchCriteria%5D%5BsortingCombined%5D=bewertungsAnzahl_descending&tx_datamintsflaschendb_pi4%5BsearchCriteria%5D%5BspiritType%5D=1&tx_datamintsflaschendb_pi4%5BcurPage%5D={1}&tx_datamintsflaschendb_pi4%5BresultsOnly%5D=1";
+
             Console.WriteLine("Starting Scraping...");
 
             var response = await CallUrl(BaseUrl);
@@ -41,66 +37,47 @@ namespace WhiskyWebScraper
             Console.Error.WriteLine("Site could not be fetched!");
         }
 
-        private List<string> ParseHtml(string html)
+        private List<string>? ParseHtml(string html)
         {
             HtmlDocument htmlDoc = new HtmlDocument();
             htmlDoc.LoadHtml(html);
 
-            var result = GetContentSection(htmlDoc);
+            //var content = GetWhiskyContentSection(htmlDoc);
+            //if (content == null) return null;
 
-            var items = result.Descendants("div")
-                    .Where(node => node.GetClasses().Contains("item") && node.GetClasses().Contains("item-wrap"))
-                    .ToList();
+            var items = HtmlQueries.GetWhiskyItems(htmlDoc.DocumentNode);
+            if (items == null) return null;
 
 
-            if (items != null)
+            List<string> links = new();
+            
+            foreach (var item in items)
             {
-                Console.WriteLine(items);
-            }
-
-            //foreach (var item in containers)
-            //{
-            //    Console.WriteLine(item.Name);
-            //    foreach (var nodeClass in item.GetClasses())
-            //    {
-            //        Console.WriteLine(nodeClass);
-            //    }
-            //    Console.WriteLine("------------------");
-            //}
-
-            List<string> nodes = new List<string>();
-
-            //foreach (var div in containers)
-            //{
-            //    if (div.FirstChild.Attributes.Count > 0) nodes.Add("https://en.wikipedia.org/" + div.FirstChild.Attributes[0].Value);
-            //}
-
-            return nodes;
-        }
-
-        private HtmlNode? GetContentSection(HtmlDocument htmlDoc)
-        {
-            var content = htmlDoc.DocumentNode.Descendants("div")
-                .Where(node => node.GetClasses().Contains("content") && node.GetClasses().Contains("main"))
-                .FirstOrDefault();
-
-            if(content != null)
-            {
-                var resultContainer = content.Descendants("div")
-                    .Where(node => node.GetClasses().Contains("search-result-container"))
+                var titleTag = item.Descendants("div")
+                    .Where(node => node.GetClasses().Contains("title"))
+                    .FirstOrDefault();
+                
+                var linkTag = titleTag.Descendants("a")
                     .FirstOrDefault();
 
-                if(resultContainer != null)
-                {
-                    var resultList = content.Descendants("div")
-                        .Where(node => node.GetClasses().Contains("resultlist") && node.GetClasses().Contains("flaschen"))
-                        .FirstOrDefault();
-
-                    return resultList;
-                }
-                return null;
+                string hrefValue = linkTag.GetAttributeValue("href", string.Empty);
+                links.Add(hrefValue);
+                
+                Console.WriteLine($"https://www.whisky.de/{hrefValue}");
             }
-            return null;
+
+            return links;
         }
+
+        private HtmlNode? GetWhiskyContentSection(HtmlDocument htmlDoc)
+        {
+            var contentSection = HtmlQueries.GetWhiskyContentSection(htmlDoc);
+            var resultContainer = HtmlQueries.GetWhiskySearchResultContainer(contentSection);
+            var contentItems = HtmlQueries.GetWhiskyResultListContainer(resultContainer);
+
+            return contentItems;
+        }
+    
+        
     }
 }
