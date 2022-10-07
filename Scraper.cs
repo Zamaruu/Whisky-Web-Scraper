@@ -1,10 +1,42 @@
 ﻿using HtmlAgilityPack;
+using WhiskyWebScraper.Data;
+using WhiskyWebScraper.Data.Models;
 using WhiskyWebScraper.Helper;
+using WhiskyWebScraper.MongoDB;
 
 namespace WhiskyWebScraper
 {
     public class WebSraper
     {
+        private readonly string BaseUrl = $"https://www.whisky.de/flaschen-db/flaschen-suche/whisky/fdb/Flaschen/search.html?type=1505224767&tx_datamintsflaschendb_pi4%5BsearchCriteria%5D%5BsortingCombined%5D=bewertungsAnzahl_descending&tx_datamintsflaschendb_pi4%5BsearchCriteria%5D%5BspiritType%5D=1&&tx_datamintsflaschendb_pi4%5BresultsOnly%5D=1tx_datamintsflaschendb_pi4%5BcurPage%5D={1}";
+        private readonly MongoService mongoService;
+
+        public WebSraper()
+        {
+            mongoService = new MongoService();
+        }
+
+        // Scraper
+        public async Task Start()
+        {
+
+            Console.WriteLine("Starting Scraping...");
+
+            var response = await CallUrl(BaseUrl);
+
+            Console.WriteLine("Scraping Finished.");
+
+            if (response != null)
+            {
+                var links = ParseHtml(response);
+                await UploadLinks(links);
+
+                return;
+            }
+
+            Console.Error.WriteLine("Site could not be fetched!");
+        }
+
 
 
         // Worker Methods
@@ -17,25 +49,7 @@ namespace WhiskyWebScraper
             return response;
         }
 
-        // Scraper
-        public async Task Start() {            
-            string BaseUrl = $"https://www.whisky.de/flaschen-db/flaschen-suche/whisky/fdb/Flaschen/search.html?type=1505224767&tx_datamintsflaschendb_pi4%5BsearchCriteria%5D%5BsortingCombined%5D=bewertungsAnzahl_descending&tx_datamintsflaschendb_pi4%5BsearchCriteria%5D%5BspiritType%5D=1&tx_datamintsflaschendb_pi4%5BcurPage%5D={1}&tx_datamintsflaschendb_pi4%5BresultsOnly%5D=1";
 
-            Console.WriteLine("Starting Scraping...");
-
-            var response = await CallUrl(BaseUrl);
-
-            Console.WriteLine("Scraping Finished.");
-
-            if(response != null)
-            {
-                var elements = ParseHtml(response);
-                Console.WriteLine(elements);
-                return;
-            } 
-            
-            Console.Error.WriteLine("Site could not be fetched!");
-        }
 
         private List<string>? ParseHtml(string html)
         {
@@ -47,7 +61,6 @@ namespace WhiskyWebScraper
 
             var items = HtmlQueries.GetWhiskyItems(htmlDoc.DocumentNode);
             if (items == null) return null;
-
 
             List<string> links = new();
             
@@ -61,9 +74,9 @@ namespace WhiskyWebScraper
                     .FirstOrDefault();
 
                 string hrefValue = linkTag.GetAttributeValue("href", string.Empty);
-                links.Add(hrefValue);
+                links.Add($"https://www.whisky.de{hrefValue}");
                 
-                Console.WriteLine($"https://www.whisky.de/{hrefValue}");
+                Console.WriteLine($"https://www.whisky.de{hrefValue}");
             }
 
             return links;
@@ -78,6 +91,36 @@ namespace WhiskyWebScraper
             return contentItems;
         }
     
-        
+        private async Task UploadLinks(List<string> rawLinks)
+        {
+            if (rawLinks == null)
+            {
+                Console.Error.WriteLine("Links could not be uploaded to mongodb");
+                return;
+            }
+
+            Console.WriteLine("Start link updating...");
+
+            var skippedLinks = 0;
+
+            foreach (var link in rawLinks)
+            {
+                if (await mongoService.LinkExists(link))
+                {
+                    skippedLinks++;
+                    continue;
+                }
+
+                var newLink = new WhiskyDetailLink(link);
+                var result = await mongoService.SaveDocument(newLink, MongoCollections.WhiskyDeLinks);
+
+                if (!result)
+                {
+                    Console.Error.WriteLine($"{link} could not be uploaded to mongodb");
+                }
+            }
+
+            Console.WriteLine($"Links successfully updated, {skippedLinks} Links were skipped.");
+        }
     }
 }

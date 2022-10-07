@@ -44,17 +44,13 @@
               "target": "Package",
               "version": "[1.11.46, )"
             },
-            "Microsoft.AspNetCore.Mvc": {
+            "MongoDB.Bson": {
               "target": "Package",
-              "version": "[2.2.0, )"
+              "version": "[2.17.1, )"
             },
-            "Microsoft.AspNetCore.Mvc.Abstractions": {
+            "MongoDB.Driver": {
               "target": "Package",
-              "version": "[2.2.0, )"
-            },
-            "Microsoft.AspNetCore.Mvc.Core": {
-              "target": "Package",
-              "version": "[2.2.5, )"
+              "version": "[2.17.1, )"
             },
             "Newtonsoft.Json": {
               "target": "Package",
