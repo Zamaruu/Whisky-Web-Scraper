@@ -2,22 +2,19 @@
 using WhiskyWebScraper.Data;
 using WhiskyWebScraper.Data.Models;
 using WhiskyWebScraper.Helper;
-using WhiskyWebScraper.MongoDB;
 
 namespace WhiskyWebScraper
 {
     public class WebSraper
     {
         private readonly string BaseUrl = $"https://www.whisky.de/flaschen-db/flaschen-suche/whisky/fdb/Flaschen/search.html?type=1505224767&tx_datamintsflaschendb_pi4%5BsearchCriteria%5D%5BsortingCombined%5D=bewertungsAnzahl_descending&tx_datamintsflaschendb_pi4%5BsearchCriteria%5D%5BspiritType%5D=1&&tx_datamintsflaschendb_pi4%5BresultsOnly%5D=1tx_datamintsflaschendb_pi4%5BcurPage%5D={1}";
-        private readonly MongoService mongoService;
 
         public WebSraper()
         {
-            mongoService = new MongoService();
         }
 
         // Scraper
-        public async Task Start()
+        public async Task<List<string>> Start()
         {
 
             Console.WriteLine("Starting Scraping...");
@@ -29,12 +26,13 @@ namespace WhiskyWebScraper
             if (response != null)
             {
                 var links = ParseHtml(response);
-                await UploadLinks(links);
+                // await UploadLinks(links);
 
-                return;
+                if(links != null) return links;
             }
 
             Console.Error.WriteLine("Site could not be fetched!");
+            return new List<string>();
         }
 
 
@@ -91,36 +89,36 @@ namespace WhiskyWebScraper
             return contentItems;
         }
     
-        private async Task UploadLinks(List<string> rawLinks)
-        {
-            if (rawLinks == null)
-            {
-                Console.Error.WriteLine("Links could not be uploaded to mongodb");
-                return;
-            }
+        // private async Task UploadLinks(List<string> rawLinks)
+        // {
+        //     if (rawLinks == null)
+        //     {
+        //         Console.Error.WriteLine("Links could not be uploaded to mongodb");
+        //         return;
+        //     }
 
-            Console.WriteLine("Start link updating...");
+        //     Console.WriteLine("Start link updating...");
 
-            var skippedLinks = 0;
+        //     var skippedLinks = 0;
 
-            foreach (var link in rawLinks)
-            {
-                if (await mongoService.LinkExists(link))
-                {
-                    skippedLinks++;
-                    continue;
-                }
+        //     foreach (var link in rawLinks)
+        //     {
+        //         if (await mongoService.LinkExists(link))
+        //         {
+        //             skippedLinks++;
+        //             continue;
+        //         }
 
-                var newLink = new WhiskyDetailLink(link);
-                var result = await mongoService.SaveDocument(newLink, MongoCollections.WhiskyDeLinks);
+        //         var newLink = new WhiskyDetailLink(link);
+        //         var result = await mongoService.SaveDocument(newLink, MongoCollections.WhiskyDeLinks);
 
-                if (!result)
-                {
-                    Console.Error.WriteLine($"{link} could not be uploaded to mongodb");
-                }
-            }
+        //         if (!result)
+        //         {
+        //             Console.Error.WriteLine($"{link} could not be uploaded to mongodb");
+        //         }
+        //     }
 
-            Console.WriteLine($"Links successfully updated, {skippedLinks} Links were skipped.");
-        }
+        //     Console.WriteLine($"Links successfully updated, {skippedLinks} Links were skipped.");
+        // }
     }
 }
